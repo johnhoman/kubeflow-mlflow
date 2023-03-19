@@ -4,44 +4,43 @@
 --- DateTime: 3/14/23 1:38 AM
 ---
 
-M = {}
 
-function startswith(s, prefix)
+local function startswith(s, prefix)
     return s:sub(1, prefix:len()) == prefix
 end
 
-function endswith(s, suffix)
+local function endswith(s, suffix)
     return s:sub(s:len()-suffix:len()+1, s:len()) == suffix
 end
 
-function trim_prefix(s, prefix)
+local function trim_prefix(s, prefix)
     return s:sub(prefix:len()+1, s:len())
 end
 
-function is_method(req, method)
+local function is_method(req, method)
     return req:headers():get(":method") == method
 end
 
-function is_GET(req) return is_method(req, "GET") end
-function is_POST(req) return is_method(req, "POST") end
+local function is_GET(req) return is_method(req, "GET") end
+local function is_POST(req) return is_method(req, "POST") end
 
-function prefix_name(name, prefix)
+local function prefix_name(name, prefix)
     return prefix .. "-" .. name
 end
 
-function prefix_attr_fn(attr, prefix)
+local function prefix_attr_fn(attr, prefix)
     return function(data)
         data[attr] = prefix_name(data[attr], prefix)
     end
 end
 
-function trim_prefix_attr_fn(attr, prefix)
+local function trim_prefix_attr_fn(attr, prefix)
     return function(data)
         data[attr] = trim_prefix(data[attr], prefix)
     end
 end
 
-function add_namespace_tag_fn(namespace)
+local function add_namespace_tag_fn(namespace)
     return function(data)
         if data.tags == nil then
             data.tags = {}
@@ -50,11 +49,11 @@ function add_namespace_tag_fn(namespace)
     end
 end
 
-function rewrite_body(req, ...)
+local function rewrite_body(req, ...)
     if req:headers():get("content-type") ~= "application/json" then
         return
     end
-    data = json:decode(tostring(req:body():getBytes(0, req:body():length())))
+    local data = json:decode(tostring(req:body():getBytes(0, req:body():length())))
     local args = table.pack(...)
     for _, fn in ipairs(args) do
         fn(data)
@@ -63,18 +62,18 @@ function rewrite_body(req, ...)
     req:headers():replace("content-length", req:body():length())
 end
 
-rewrite_query = function(req, ...)
-    path = req:headers():get(":path")
-    u = url.parse(path)
+local rewrite_query = function(req, ...)
+    local path = req:headers():get(":path")
+    local u = url.parse(path)
     for _, fn in ipairs(table.pack(...)) do
         fn(u.query)
     end
     req:headers():replace(":path", tostring(u))
 end
 
-function set_namespace_filter_fn(namespace)
+local function set_namespace_filter_fn(namespace)
     return function(query)
-        f = string.format("tags.namespace = '%s'", namespace)
+        local f = string.format("tags.namespace = '%s'", namespace)
         if query.filter ~= nil then
             f = query.filter .. " AND " ..f
         end
@@ -82,9 +81,9 @@ function set_namespace_filter_fn(namespace)
     end
 end
 
-function map_attr(attr, ...)
+local function map_attr(attr, ...)
     --- rewrite_body(res, map_attr("experiment", trim_prefix_attr_fn("name", namespace)))
-    args = table.pack(...)
+    local args = table.pack(...)
     return function(data)
         for k, _ in ipairs(data[attr]) do
             for _, fn in ipairs(args) do
@@ -94,9 +93,9 @@ function map_attr(attr, ...)
     end
 end
 
-function attr(attr, ...)
+local function attr(attr, ...)
     --- rewrite_body(res, map_attr("experiment", trim_prefix_attr_fn("name", namespace)))
-    args = table.pack(...)
+    local args = table.pack(...)
     return function(data)
         if data[attr] == nil then
             return
@@ -107,7 +106,7 @@ function attr(attr, ...)
     end
 end
 
-function remove_namespace_tags()
+local function remove_namespace_tags()
     return function(data)
         if data.tags == nil then
             return
@@ -122,9 +121,10 @@ function remove_namespace_tags()
     end
 end
 
+M = {}
 
 function M:envoy_on_request(req)
-    namespace = req:headers():get("x-kubernetes-namespace")
+    local namespace = req:headers():get("x-kubernetes-namespace")
     if namespace == nil then
         req:respond({[":status"] = "403"}, "namespace is required")
         return
@@ -225,13 +225,13 @@ end
 function M:envoy_on_response(res)
     --- these are needed in the response and this seems to be the only
     --- way to expose the path/namespace to the response
-    req_data = res:streamInfo():dynamicMetadata():get("envoy.filters.http.lua")
+    local req_data = res:streamInfo():dynamicMetadata():get("envoy.filters.http.lua")
     if req_data == nil or req_data[":path"] == nil then
         return
     end
-    path = req_data[":path"]
-    namespace = req_data[":namespace"]
-    u = url.parse(path)
+    local path = req_data[":path"]
+    local namespace = req_data[":namespace"]
+    local u = url.parse(path)
 
     if endswith(u.path, "/experiments/create") and is_GET(res) then
         --- nothing to do
