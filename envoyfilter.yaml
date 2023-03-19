@@ -26,11 +26,11 @@ spec:
             inlineCode: |
               url  = (loadfile "/tmp/lib/lua/url.lua")()
               json = (loadfile "/tmp/lib/lua/json.lua")()
-              ml   = (loadfile "/tmp/lib/lua/mlflow.lua)()
+              flow   = (loadfile "/tmp/lib/lua/mlflow.lua)()
 
               function envoy_on_request(req)
-                ml:envoy_on_request(req)
+                flow:envoy_on_request(req)
               end
               function envoy_on_response(req)
-                ml:envoy_on_response(req)
+                flow:envoy_on_response(req)
               end
