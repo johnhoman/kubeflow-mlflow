@@ -1,0 +1,99 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kyverno:mlflow-server:routing
+  labels:
+    app.kubernetes.io/name: kyverno
+    app.kubernetes.io/instance: kyverno
+rules:
+- apiGroups:
+  - networking.istio.io
+  resources:
+  - virtualservices
+  verbs:
+  - create
+  - update
+  - delete
+  - patch
+  - list
+  - watch
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: mlflow-networking
+spec:
+  generateExistingOnPolicyUpdate: true
+  rules:
+  - name: ingress
+    match:
+      any:
+      - resources:
+          kinds:
+          - v1/Namespace
+          selector:
+            matchLabels:
+              app.kubernetes.io/part-of: kubeflow-profile
+    generate:
+      synchronize: true
+      apiVersion: networking.istio.io/v1beta1
+      kind: VirtualService
+      name: 'mlflow-igw-{{ request.object.metadata.name }}'
+      namespace: kubeflow
+      data:
+        spec:
+          gateways:
+          - kubeflow/kubeflow-gateway
+          hosts:
+          - '*'
+          http:
+          - match:
+            - uri:
+               prefix: "/mlflow/{{ request.object.metadata.name }}/"
+            - uri:
+               exact: "/mlflow/{{ request.object.metadata.name }}"
+            rewrite:
+              uri: /
+            headers:
+              request:
+                set:
+                  x-kubernetes-namespace: "{{ request.object.metadata.name }}"
+            route:
+            - destination:
+                host: mlflow-service.kubeflow.svc.cluster.local
+                port:
+                  number: 80
+  - name: workloads
+    match:
+      any:
+      - resources:
+          kinds:
+          - v1/Namespace
+          selector:
+            matchLabels:
+              app.kubernetes.io/part-of: kubeflow-profile
+    generate:
+      synchronize: true
+      apiVersion: networking.istio.io/v1beta1
+      kind: VirtualService
+      name: 'mlflow-workload-{{ request.object.metadata.name }}'
+      namespace: kubeflow
+      data:
+        spec:
+          hosts:
+          - mlflow-service.kubeflow.svc.cluster.local
+          http:
+          - match:
+            - uri:
+                prefix: /
+              sourceNamespace: "{{ request.object.metadata.name }}"
+            headers:
+              request:
+                set:
+                  x-kubernetes-namespace: "{{ request.object.metadata.name }}"
+            route:
+            - destination:
+                host: mlflow-service.kubeflow.svc.cluster.local
+                port:
+                  number: 80
