@@ -4,6 +4,8 @@ kind: EnvoyFilter
 metadata:
   name: mlflow-filter
 spec:
+  workloadSelector:
+    labels: {}
   configPatches:
     # The first patch adds the lua filter to the listener/http connection manager
     - applyTo: HTTP_FILTER
