@@ -62,13 +62,13 @@ local function rewrite_body(req, ...)
     req:headers():replace("content-length", req:body():length())
 end
 
-local rewrite_query = function(req, ...)
+local function rewrite_query(req, ...)
     local path = req:headers():get(":path")
     local u = url.parse(path)
     for _, fn in ipairs(table.pack(...)) do
         fn(u.query)
     end
-    req:headers():replace(":path", tostring(u))
+    req:headers():replace(":path", tostring(u:normalize()))
 end
 
 local function set_namespace_filter_fn(namespace)
@@ -111,7 +111,7 @@ local function remove_namespace_tags()
         if data.tags == nil then
             return
         end
-        out = {}
+        local out = {}
         for k, tag in pairs(data.tags) do
             if data.tag.key ~= "namespace" then
                 table.insert(out, tag)
@@ -129,7 +129,7 @@ function M:envoy_on_request(req)
         req:respond({[":status"] = "403"}, "namespace is required")
         return
     end
-    u = url.parse(req:headers():get(":path"))
+    local u = url.parse(req:headers():get(":path"))
     if not startswith(u.path, "/api") and not startswith(path, "/ajax-api") then
         return
     end
@@ -139,9 +139,9 @@ function M:envoy_on_request(req)
     req:streamInfo():dynamicMetadata():set("envoy.filters.http.lua", ":path", path)
     req:streamInfo():dynamicMetadata():set("envoy.filters.http.lua", ":namespace", namespace)
 
-    if endswith(u.path, "/experiments/create") and is_GET(req) then
+    if endswith(u.path, "/experiments/create") and is_POST(req) then
         rewrite_body(req, prefix_attr_fn("name", namespace), add_namespace_tag_fn(namespace))
-    elseif endswith(u.path, "/experiments/search") and is_POST(req) then
+    elseif endswith(u.path, "/experiments/search") and is_GET(req) then
         rewrite_query(req, set_namespace_filter_fn(namespace))
     elseif endswith(u.path, "/experiments/get")  and is_GET(req) then
         --- nothing to do
