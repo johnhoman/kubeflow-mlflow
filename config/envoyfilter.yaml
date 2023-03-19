@@ -1,0 +1,36 @@
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: mlflow-filter
+spec:
+  configPatches:
+    # The first patch adds the lua filter to the listener/http connection manager
+    - applyTo: HTTP_FILTER
+      match:
+        context: SIDECAR_INBOUND
+        # apparently absence of match here matches on everything
+        listener:
+          portNumber: 5000
+          filterChain:
+            filter:
+              name: "envoy.filters.network.http_connection_manager"
+              subFilter:
+                name: "envoy.filters.http.router"
+      patch:
+        operation: INSERT_BEFORE
+        value: # lua filter specification
+          name: envoy.filters.http.lua
+          typed_config:
+            "@type": "type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua"
+            inlineCode: |
+              url  = (loadfile "/tmp/lib/lua/url.lua")()
+              json = (loadfile "/tmp/lib/lua/json.lua")()
+              ml   = (loadfile "/tmp/lib/lua/mlflow.lua)()
+
+              function envoy_on_request(req)
+                ml:envoy_on_request(req)
+              end
+              function envoy_on_response(req)
+                ml:envoy_on_response(req)
+              end

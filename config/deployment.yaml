@@ -1,0 +1,29 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mlflow-service
+spec:
+  replicas: 3
+  selector: {}
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/userVolume: '[{"name":"lua-libs","configMap":{"name":"mlflow.lua"}}]'
+        sidecar.istio.io/userVolumeMount: '[{"name":"lua-libs","mountPath":"/tmp/lib/lua"}]'
+      labels:
+        sidecar.istio.io/inject: "true"
+    spec:
+      containers:
+      - name: http-mlflow
+        image: ghcr.io/mlflow/mlflow:v2.2.1
+        command:
+        - mlflow
+        - server
+        - --host=0.0.0.0
+        - --port=5000
+        args:
+        - --backend-store-uri=sqlite://
+        ports:
+        - name: http
+          containerPort: 5000

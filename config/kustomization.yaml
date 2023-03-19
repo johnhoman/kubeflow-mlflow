@@ -1,0 +1,20 @@
+namespace: kubeflow
+resources:
+- deployment.yaml
+- service.yaml
+- envoyfilter.yaml
+generatorOptions:
+  disableNameSuffixHash: true
+
+commonLabels:
+  app.kubernetes.io/name: kubeflow
+  app.kubernetes.io/component: mlflow-service
+
+configMapGenerator:
+- name: mlflow.lua
+  files:
+  - lib/json.lua
+  - lib/url.lua
+  - lib/mlflow.lua
+configurations:
+- kustomizeconfig.yaml
