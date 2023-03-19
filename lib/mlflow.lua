@@ -130,13 +130,13 @@ function M:envoy_on_request(req)
         return
     end
     local u = url.parse(req:headers():get(":path"))
-    if not startswith(u.path, "/api") and not startswith(path, "/ajax-api") then
+    if not startswith(u.path, "/api") and not startswith(u.path, "/ajax-api") then
         return
     end
 
     --- these are needed in the response and this seems to be the only
     --- way to expose the path/namespace to the response
-    req:streamInfo():dynamicMetadata():set("envoy.filters.http.lua", ":path", path)
+    req:streamInfo():dynamicMetadata():set("envoy.filters.http.lua", ":path", u.path)
     req:streamInfo():dynamicMetadata():set("envoy.filters.http.lua", ":namespace", namespace)
 
     if endswith(u.path, "/experiments/create") and is_POST(req) then
