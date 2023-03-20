@@ -1,4 +1,0 @@
-commonLabels:
-- kind: EnvoyFilter
-  path: /spec/workloadSelector/labels
-  create: true

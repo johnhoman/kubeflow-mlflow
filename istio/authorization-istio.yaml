@@ -23,9 +23,42 @@ apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
   name: mlflow-authorization
+  labels:
+    app.kubernetes.io/name: kubeflow
+    app.kubernetes.io/component: mlflow-service
 spec:
   generateExistingOnPolicyUpdate: true
   rules:
+  - name: serviceaccount
+    match:
+      any:
+      - resources:
+          kinds:
+          - Namespace
+          selector:
+            matchLabels:
+              app.kubernetes.io/part-of: kubeflow-profile
+    generate:
+      synchronize: true
+      apiVersion: security.istio.io/v1beta1
+      kind: AuthorizationPolicy
+      name: 'mlflow-{{ request.object.metadata.name }}-svc'
+      namespace: kubeflow
+      data:
+        spec:
+          action: ALLOW
+          selector:
+            matchLabels:
+              app: mlflow-service
+          rules:
+          - when:
+            - key: request.headers[x-kubernetes-namespace]
+              values:
+              - '{{ request.object.metadata.name }}'
+          - from:
+            - source:
+                principals:
+                - 'cluster.local/ns/{{ request.object.metadata.name }}/sa/*'
   - name: rolebinding
     match:
       any:
@@ -47,7 +80,7 @@ spec:
       synchronize: true
       apiVersion: security.istio.io/v1beta1
       kind: AuthorizationPolicy
-      name: 'mlflow-{{ request.object.metadata.namespace }}-rb-{{ request.object.metadata.name }}'
+      name: 'mlflow-{{ request.object.metadata.namespace }}-rb-{{ request.object.metadata.name | to_lower(@) }}'
       namespace: kubeflow
       data:
         spec:
@@ -66,33 +99,3 @@ spec:
             - source:
                 principals:
                 - cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account
-  - name: serviceaccount
-    match:
-      any:
-      - resources:
-          kinds:
-          - v1/ServiceAccount
-          namespaceSelector:
-            matchLabels:
-              app.kubernetes.io/part-of: kubeflow-profile
-    generate:
-      synchronize: true
-      apiVersion: security.istio.io/v1beta1
-      kind: AuthorizationPolicy
-      name: 'mlflow-{{ request.object.metadata.namespace }}-svc-{{ request.object.metadata.name }}'
-      namespace: kubeflow
-      data:
-        spec:
-          action: ALLOW
-          selector:
-            matchLabels:
-              app: mlflow-service
-          rules:
-          - when:
-            - key: request.headers[x-kubernetes-namespace]
-              values:
-              - '{{ request.object.metadata.namespace }}'
-          - from:
-            - source:
-                principals:
-                - 'cluster.local/ns/{{ request.object.metadata.namespace }}/sa/{{ request.object.metadata.name }}'

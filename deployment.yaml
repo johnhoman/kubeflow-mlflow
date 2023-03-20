@@ -3,15 +3,23 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mlflow-service
+  labels:
+    app.kubernetes.io/name: kubeflow
+    app.kubernetes.io/component: mlflow-service
 spec:
   replicas: 1
-  selector: {}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kubeflow
+      app.kubernetes.io/component: mlflow-service
   template:
     metadata:
       annotations:
         sidecar.istio.io/userVolume: '[{"name":"lua-libs","configMap":{"name":"mlflow.lua"}}]'
         sidecar.istio.io/userVolumeMount: '[{"name":"lua-libs","mountPath":"/tmp/lib/lua"}]'
       labels:
+        app.kubernetes.io/name: kubeflow
+        app.kubernetes.io/component: mlflow-service
         sidecar.istio.io/inject: "true"
     spec:
       containers:
