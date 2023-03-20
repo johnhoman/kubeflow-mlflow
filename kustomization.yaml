@@ -3,8 +3,8 @@ resources:
 - deployment.yaml
 - service.yaml
 - envoyfilter.yaml
-- routing-istio.yaml
-- authorization-istio.yaml
+- istio
+
 generatorOptions:
   disableNameSuffixHash: true
 

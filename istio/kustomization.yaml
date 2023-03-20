@@ -1,0 +1,3 @@
+resources:
+- authorization-istio.yaml
+- routing-istio.yaml
